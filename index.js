@@ -1,23 +1,5 @@
 'use strict';
 
-/**
- * Serverless Plugin Boilerplate
- * - Useful example/starter code for writing a plugin for the Serverless Framework.
- * - In a plugin, you can:
- *    - Create a Custom Action that can be called via the CLI or programmatically via a function handler.
- *    - Overwrite a Core Action that is included by default in the Serverless Framework.
- *    - Add a hook that fires before or after a Core Action or a Custom Action
- *    - All of the above at the same time :)
- *
- * - Setup:
- *    - Make a Serverless Project dedicated for plugin development, or use an existing Serverless Project
- *    - Make a "plugins" folder in the root of your Project and copy this codebase into it. Title it your custom plugin name with the suffix "-dev", like "myplugin-dev"
- *    - Run "npm link" in your plugin, then run "npm link myplugin" in the root of your project.
- *    - Start developing!
- *
- * - Good luck, serverless.com :)
- */
-
 module.exports = function(ServerlessPlugin) { // Always pass in the ServerlessPlugin Class
 
   const path    = require('path'),
@@ -28,7 +10,7 @@ module.exports = function(ServerlessPlugin) { // Always pass in the ServerlessPl
    * ServerlessPluginBoierplate
    */
 
-  class ServerlessPluginBoilerplate extends ServerlessPlugin {
+  class ServerlessPluginLocalEnvironment extends ServerlessPlugin {
 
     /**
      * Constructor
@@ -45,39 +27,7 @@ module.exports = function(ServerlessPlugin) { // Always pass in the ServerlessPl
      */
 
     static getName() {
-      return 'com.serverless.' + ServerlessPluginBoilerplate.name;
-    }
-
-    /**
-     * Register Actions
-     * - If you would like to register a Custom Action or overwrite a Core Serverless Action, add this function.
-     * - If you would like your Action to be used programatically, include a "handler" which can be called in code.
-     * - If you would like your Action to be used via the CLI, include a "description", "context", "action" and any options you would like to offer.
-     * - Your custom Action can be called programatically and via CLI, as in the example provided below
-     */
-
-    registerActions() {
-
-      this.S.addAction(this._customAction.bind(this), {
-        handler:       'customAction',
-        description:   'A custom action from a custom plugin',
-        context:       'custom',
-        contextAction: 'run',
-        options:       [{ // These must be specified in the CLI like this "-option true" or "-o true"
-          option:      'option',
-          shortcut:    'o',
-          description: 'test option 1'
-        }],
-        parameters: [ // Use paths when you multiple values need to be input (like an array).  Input looks like this: "serverless custom run module1/function1 module1/function2 module1/function3.  Serverless will automatically turn this into an array and attach it to evt.options within your plugin
-          {
-            parameter: 'paths',
-            description: 'One or multiple paths to your function',
-            position: '0->' // Can be: 0, 0-2, 0->  This tells Serverless which params are which.  3-> Means that number and infinite values after it.
-          }
-        ]
-      });
-
-      return BbPromise.resolve();
+      return 'com.piercus.' + ServerlessPluginLocalVariable.name;
     }
 
     /**
@@ -88,95 +38,44 @@ module.exports = function(ServerlessPlugin) { // Always pass in the ServerlessPl
 
     registerHooks() {
 
-      this.S.addHook(this._hookPre.bind(this), {
-        action: 'functionRunLambdaNodeJs',
+      this.S.addHook(this.extendWithLocalEnvironment.bind(this), {
+        action: 'invoke:local:invoke',
         event:  'pre'
-      });
-
-      this.S.addHook(this._hookPost.bind(this), {
-        action: 'functionRunLambdaNodeJs',
-        event:  'post'
       });
 
       return BbPromise.resolve();
     }
+    
+    extendWithLocalEnvironment(){
+        this.options.functionObj = this.S.service.getFunction(this.options.function);
+        this.options.localEnvironment = this.options.functionObj && this.options.functionObj['local-environment'];
+        
+        if(
+          this.options.localEnvironment && 
+          this.options.localEnvironment['LD_LIBRARY_PATH']
+        ){
+          
+          let ldPaths;
+          // from https://github.com/serverless/serverless/blob/4b71faf2128308894646940ce2fb64e826450972/lib/plugins/aws/invokeLocal/index.js#L95
+          const awsLibs = '/usr/local/lib64/node-v4.3.x/lib:/lib64:/usr/lib64:/var/runtime:/var/runtime/lib:/var/task:/var/task/lib';
+          ldPaths = ldPaths.concat(awsLibs.split(':'));
+          ldPaths = ldPaths.concat(this.options.localEnvironment['LD_LIBRARY_PATH'].split(':'));
 
-    /**
-     * Custom Action Example
-     * - Here is an example of a Custom Action.  Include this and modify it if you would like to write your own Custom Action for the Serverless Framework.
-     * - Be sure to ALWAYS accept and return the "evt" object, or you will break the entire flow.
-     * - The "evt" object contains Action-specific data.  You can add custom data to it, but if you change any data it will affect subsequent Actions and Hooks.
-     * - You can also access other Project-specific data @ this.S Again, if you mess with data on this object, it could break everything, so make sure you know what you're doing ;)
-     */
-
-    _customAction(evt) {
-
-      let _this = this;
-
-      return new BbPromise(function (resolve, reject) {
-
-        // console.log(evt)           // Contains Action Specific data
-        // console.log(_this.S)       // Contains Project Specific data
-        // console.log(_this.S.state) // Contains tons of useful methods for you to use in your plugin.  It's the official API for plugin developers.
-
-        console.log('-------------------');
-        console.log('YOU JUST RAN YOUR CUSTOM ACTION, NICE!');
-        console.log('-------------------');
-
-        return resolve(evt);
-
-      });
+          this.options.localEnvironment['LD_LIBRARY_PATH'] = ldPaths.join(':');
+        }
+        if(!this.options.functionObj.environment){
+          this.options.functionObj.environment = {};
+        }        
+        
+        Object.assign(this.options.functionObj.environment, this.options.localEnvironment);
+        
+        return Promise.resolve();
     }
 
-    /**
-     * Your Custom PRE Hook
-     * - Here is an example of a Custom PRE Hook.  Include this and modify it if you would like to write your a hook that fires BEFORE an Action.
-     * - Be sure to ALWAYS accept and return the "evt" object, or you will break the entire flow.
-     * - The "evt" object contains Action-specific data.  You can add custom data to it, but if you change any data it will affect subsequent Actions and Hooks.
-     * - You can also access other Project-specific data @ this.S Again, if you mess with data on this object, it could break everything, so make sure you know what you're doing ;)
-     */
-
-    _hookPre(evt) {
-
-      let _this = this;
-
-      return new BbPromise(function (resolve, reject) {
-
-        console.log('-------------------');
-        console.log('YOUR SERVERLESS PLUGIN\'S CUSTOM "PRE" HOOK HAS RUN BEFORE "FunctionRunLambdaNodeJs"');
-        console.log('-------------------');
-
-        return resolve(evt);
-
-      });
-    }
-
-    /**
-     * Your Custom POST Hook
-     * - Here is an example of a Custom POST Hook.  Include this and modify it if you would like to write your a hook that fires AFTER an Action.
-     * - Be sure to ALWAYS accept and return the "evt" object, or you will break the entire flow.
-     * - The "evt" object contains Action-specific data.  You can add custom data to it, but if you change any data it will affect subsequent Actions and Hooks.
-     * - You can also access other Project-specific data @ this.S Again, if you mess with data on this object, it could break everything, so make sure you know what you're doing ;)
-     */
-
-    _hookPost(evt) {
-
-      let _this = this;
-
-      return new BbPromise(function (resolve, reject) {
-
-        console.log('-------------------');
-        console.log('YOUR SERVERLESS PLUGIN\'S CUSTOM "POST" HOOK HAS RUN AFTER "FunctionRunLambdaNodeJs"');
-        console.log('-------------------');
-
-        return resolve(evt);
-
-      });
-    }
   }
 
   // Export Plugin Class
-  return ServerlessPluginBoilerplate;
+  return ServerlessPluginLocalEnvironment;
 
 };
 

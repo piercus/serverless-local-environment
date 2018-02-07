@@ -7,6 +7,7 @@ This way :
 * you can customize the behavior when running on local
 * you can set another stage to use locally
 * You can set variables like **LD_LIBRARY_PATH** to connact to your local environment
+* You can mock your cloud ressource during your local tests
 
 
 ## Install
@@ -34,7 +35,7 @@ functions:
     environment:
       ENV: dev
     local-environment:
-      ENV: dev
+      ENV: local
 ```
 
 

@@ -8,12 +8,22 @@ This way :
 * you can set another stage to use locally
 * You can set variables like **LD_LIBRARY_PATH** to connact to your local environment
 
+
+## Install
+
+```
+npm install --save-dev serverless-local-environment
+```
+
+## Usage
+
+
 You can use it like 
 
 **serverless.yml**
 ```yml
 plugins:
-  - serverless-local-variables
+  - serverless-local-environment
 
 ...
 

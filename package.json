@@ -9,7 +9,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/serverless/serverless-plugin-boilerplate"
+    "url": "https://github.com/piercus/serverless-local-environment"
   },
   "keywords": [
     "serverless plugin",
